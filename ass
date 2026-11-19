@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven'
+        jdk 'Java25'
+    }
+
+    stages {
+
+        stage('Checkout Source Code') {
+            steps {
+                echo 'Fetching latest code from GitHub repository...'
+
+                git branch: 'main',
+                    url: 'https://github.com/sarasrija/ApartmentSystem.git'
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                echo 'Compiling Java source files...'
+                bat 'mvn clean compile'
+            }
+        }
+
+        stage('Unit Testing') {
+            steps {
+                echo 'Running JUnit test cases...'
+                bat 'mvn test'
+            }
+
+            post {
+                always {
+                    junit testResults: '**/target/surefire-reports/*.xml',
+                          allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Package WAR') {
+            steps {
+                echo 'Packaging compiled code into WAR artifact...'
+                bat 'mvn package -DskipTests=true'
+            }
+        }
+
+        stage('Deploy to Tomcat') {
+            steps {
+                echo 'Deploying WAR to Apache Tomcat...'
+
+                bat 'copy /Y target\\*.war "C:\\Program Files\\Apache Software Foundation\\Tomcat 9.0\\webapps\\ROOT.war"'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline Completed Successfully! Build #${env.BUILD_NUMBER} deployed."
+        }
+
+        failure {
+            echo 'Pipeline Failed! Check console log for build/test errors.'
+        }
+    }
+}
